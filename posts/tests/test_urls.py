@@ -16,13 +16,12 @@ class PostURLTests(TestCase):
         cls.user = User.objects.create_user(username='NeAnon')
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user)
+        cls.not_follow_user = User.objects.create_user(username='Anon5')
+        cls.auth_client = Client()
+        cls.auth_client.force_login(cls.not_follow_user)
         Follow.objects.create(
             author=cls.user_author,
             user=cls.user,
-        )
-        Follow.objects.create(
-            user=cls.user_author,
-            author=cls.user,
         )
         cls.group = Group.objects.create(
             title='Название',
@@ -67,7 +66,7 @@ class PostURLTests(TestCase):
         }
         for url_name, page_code in url_names.items():
             with self.subTest():
-                response = self.authorized_client.get(url_name)
+                response = self.auth_client.get(url_name)
                 self.assertEqual(response.status_code, page_code)
 
     def test_edit_url_not_available(self):
@@ -92,16 +91,26 @@ class PostURLTests(TestCase):
             '/new/': 'new.html',
             f'/{ self.user_author.username }/{ self.post.id }/edit/':
             'new.html',
-            '/follow/': 'follow.html',
-            f'/{ self.user_author.username }/follow/': 'profile_follow.html',
-            f'/{ self.user_author.username }/unfollow/':
-            'profile_unfollow.html',
+            f'/{ self.not_follow_user.username }/follow/':
+            'profile_follow.html',
             f'/{ self.user_author.username }/{ self.post.id }/comment/':
             'add_comment.html'
         }
         for reverse_name, template in templates_url_names.items():
             with self.subTest():
                 response = self.author_client.get(reverse_name)
+                self.assertTemplateUsed(response, template)
+
+    def test_not_followed_urls_uses_correct_template(self):
+        """URL-адрес использует соответствующий шаблон."""
+        templates_url_names = {
+            '/follow/': 'follow.html',
+            f'/{ self.user_author.username }/unfollow/':
+            'profile_unfollow.html',
+        }
+        for reverse_name, template in templates_url_names.items():
+            with self.subTest():
+                response = self.authorized_client.get(reverse_name)
                 self.assertTemplateUsed(response, template)
 
     def test_edit_redirect(self):
