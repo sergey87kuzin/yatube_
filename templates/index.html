@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load thumbnail %}
+{% block title %}Последние обновления на сайте{% endblock %}
+{% block header %}Последние обновления на сайте{% endblock %}
+{% block content %}
+{% include 'includes/changer.html' %}
+{% for post in page %}
+{% include 'includes/post_card.html' %}
+{% if not forloop.last %}
+<hr>{% endif %}
+{% endfor %}
+
+{% include 'includes/paginator.html' %}
+
+{% endblock %}

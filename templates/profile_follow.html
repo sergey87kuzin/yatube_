@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %} Подписка состоялась {% endblock %}
+{% block header %} Поздравляем! {% endblock %}
+{% block content %}
+
+<main role='main' class='container'>
+  <div class='row'>
+    <div class='col-md-12'>
+      <p class='lead'>Вы подписались на пользователя {{ username }}</p>
+      <p class='lead'><a href="{% url  'index' %}">Вернуться на главную</a></p>
+    </div>
+  </div>
+</main>
+
+{% endblock %}
