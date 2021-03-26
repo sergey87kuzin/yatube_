@@ -1,11 +1,7 @@
 {% extends 'base.html' %}
-
 {% block title %}Записи автора {{ author.username }}{% endblock %}
-
 {% block header %}
-
 Записи автора
-
 {% endblock %}
 {% block content %}
 <main role='main' class='container'>
@@ -16,10 +12,8 @@
     <div class='col-md-9'>
       {% for post in page %}
       {% include 'includes/post_card.html' %}
-      {% if not forloop.last %}
-      <hr>{% endif %}
+      {% if not forloop.last %}<hr>{% endif %}
       {% endfor %}
-
       {% include 'includes/paginator.html' %}
     </div>
   </div>

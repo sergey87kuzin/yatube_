@@ -6,8 +6,7 @@
 {% include 'includes/changer.html' %}
 {% for post in page %}
 {% include 'includes/post_card.html' %}
-{% if not forloop.last %}
-<hr>{% endif %}
+{% if not forloop.last %}<hr>{% endif %}
 {% endfor %}
 
 {% include 'includes/paginator.html' %}

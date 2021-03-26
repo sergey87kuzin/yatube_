@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -19,8 +21,8 @@ class StaticViewsTests(TestCase):
 
     def test_url_exists_at_desired_location(self):
         url_names = {
-            'about:author': 200,
-            'about:tech': 200,
+            'about:author': HTTPStatus.OK,
+            'about:tech': HTTPStatus.OK,
         }
         for url_name, page_code in url_names.items():
             with self.subTest():

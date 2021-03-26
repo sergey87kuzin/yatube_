@@ -1,19 +1,22 @@
+import os
 import shutil
-import tempfile
+from http import HTTPStatus
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from posts.models import Comment, Group, Post, User
+from yatube.settings import BASE_DIR
 
 
+@override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'temp_media'))
 class PostFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Anon')
-        settings.MEDIA_ROOT = tempfile.mkdtemp(dir='media')
         cls.small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -39,10 +42,12 @@ class PostFormTests(TestCase):
         )
 
     def setUp(self):
+        cache.clear()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
     @classmethod
+    @override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'temp_media'))
     def tearDownClass(cls):
         super().tearDownClass()
         shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
@@ -55,19 +60,21 @@ class PostFormTests(TestCase):
             'text': 'Тестовый текст, который длиннее 15 символов',
             'image': PostFormTests.uploaded,
         }
+
         response = self.authorized_client.post(
             reverse('new_post'),
             data=form_data,
             follow=True
         )
+
         self.assertRedirects(response, reverse('index'))
         self.assertEqual(Post.objects.count(), posts_count + 1)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTrue(
             Post.objects.filter(
-                author=self.user,
+                author=PostFormTests.user,
                 text=self.post.text,
-                group=self.group.id,
+                group=PostFormTests.group.id,
                 image='posts/small.gif',
             ).exists()
         )
@@ -83,17 +90,19 @@ class PostFormTests(TestCase):
             'group': self.group.id,
             'text': 'Тестовый текст, который намного длиннее 15 символов',
         }
+
         response = self.authorized_client.post(
             reverse('post_edit', kwargs={'username': self.user.username,
                                          'post_id': self.post.id}),
             data=form_data,
             follow=True
         )
+
         self.assertRedirects(
             response, reverse('post', kwargs={'username': self.user.username,
                                               'post_id': self.post.id}))
         self.assertEqual(Post.objects.count(), posts_count)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTrue(
             Post.objects.filter(
                 author=self.user,
@@ -115,6 +124,7 @@ class PostFormTests(TestCase):
             'text': 'первый, ах!',
             'post': PostFormTests.post,
         }
+
         response = self.authorized_client.post(
             reverse('add_comment',
                     kwargs={'username': self.user.username,
@@ -122,15 +132,45 @@ class PostFormTests(TestCase):
             data=form_data,
             follow=True
         )
+
         self.assertRedirects(response, reverse(
             'post', kwargs={'username': self.user.username,
                             'post_id': self.post.id}))
         self.assertEqual(Comment.objects.count(), comments_count + 1)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertTrue(
             Comment.objects.filter(
                 author=self.user,
                 text=form_data['text'],
                 post=self.post,
+            ).exists()
+        )
+
+    def test_wrong_file_format(self):
+        """wrong file format"""
+        my_file = open('TestFile.txt', 'w+')
+        my_file.write('Something gone wrong')
+        text_uploaded = SimpleUploadedFile(
+            name='TestFile.txt',
+            content=my_file.read(),
+        )
+        form_data = {
+            'group': self.group.id,
+            'text': 'Тестовый текст, который длиннее 15 символов',
+            'image': text_uploaded,
+        }
+
+        self.authorized_client.post(
+            reverse('new_post'),
+            data=form_data,
+            follow=True
+        )
+
+        self.assertFalse(
+            Post.objects.filter(
+                author=self.user,
+                text=self.post.text,
+                group=self.group.id,
+                image='posts/my_file.txt',
             ).exists()
         )

@@ -1,15 +1,18 @@
+import os
 import shutil
-import tempfile
-import time
+from http import HTTPStatus
 
 from django import forms
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from posts.models import Follow, Group, Post, User
+from posts.models import Comment, Follow, Group, Post, User
+from yatube.settings import BASE_DIR
 
 
+@override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'temp_media'))
 class PostPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -22,12 +25,8 @@ class PostPagesTests(TestCase):
         cls.author_client.force_login(cls.user_author)
         cls.user_not_follow = User.objects.create_user(username='Anon4')
         cls.auth_client = Client()
-        cls.auth_client.force_login(cls.user)
-        Follow.objects.create(
-            author=cls.user,
-            user=cls.user_author,
-        )
-        settings.MEDIA_ROOT = tempfile.mkdtemp(dir='media')
+        cls.auth_client.force_login(cls.user_not_follow)
+        cls.guest_client = Client()
         cls.small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -54,6 +53,7 @@ class PostPagesTests(TestCase):
         )
 
     @classmethod
+    @override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'temp_media'))
     def tearDownClass(cls):
         super().tearDownClass()
         shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
@@ -66,6 +66,7 @@ class PostPagesTests(TestCase):
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
+        cache.clear()
         templates_url_names = {
             'index.html': reverse('index'),
             'new.html': reverse('new_post'),
@@ -77,15 +78,23 @@ class PostPagesTests(TestCase):
                 'profile_follow',
                 kwargs={'username': self.user_author.username}),
         }
+
         for template, reverse_name in templates_url_names.items():
             with self.subTest():
                 response = self.authorized_client.get(reverse_name)
+
                 self.assertTemplateUsed(response, template)
 
     def test_follow_uses_correct_template(self):
+        Follow.objects.create(
+            author=PostPagesTests.user,
+            user=PostPagesTests.user_author,
+        )
+
         response = self.author_client.get(
             reverse('profile_unfollow',
                     kwargs={'username': self.user.username}))
+
         self.assertTemplateUsed(response, 'profile_unfollow.html')
 
     def test_new_edit_page_show_correct_context(self):
@@ -94,6 +103,7 @@ class PostPagesTests(TestCase):
                      reverse('post_edit',
                      kwargs={'username': self.user.username,
                              'post_id': self.post.id}))
+
         for rev_name in rev_names:
             with self.subTest():
                 response = self.authorized_client.get(rev_name)
@@ -104,6 +114,7 @@ class PostPagesTests(TestCase):
             for value, expected in new_forms_fields.items():
                 with self.subTest(value=value):
                     model_field = response.context['form'].fields[value]
+
                     self.assertIsInstance(model_field, expected)
 
     def test_post_page_show_correct_context(self):
@@ -113,19 +124,23 @@ class PostPagesTests(TestCase):
                                                   self.user.username,
                                                   'post_id': self.post.id}))
         post_object = resp.context['post']
+
         PostPagesTests.help_with_test(self, post_object)
 
     def test_home_page_show_correct_context(self):
+        cache.clear()
         resp = self.authorized_client.get(reverse('index'))
         post_object = resp.context['page'][0]
+
         PostPagesTests.help_with_test(self, post_object)
 
     def test_group_page_show_correct_context(self):
         resp = self.authorized_client.get(
             reverse('group_posts', kwargs={'slug': self.group.slug, }))
         post_object = resp.context['page'][0]
-        PostPagesTests.help_with_test(self, post_object)
         group = resp.context['group']
+
+        PostPagesTests.help_with_test(self, post_object)
         self.assertEqual(group, self.group)
 
     def test_profile_page_show_correct_context(self):
@@ -133,48 +148,90 @@ class PostPagesTests(TestCase):
             reverse('profile', kwargs={
                     'username': self.user.username, }))
         post_object = resp.context['page'][0]
+
         PostPagesTests.help_with_test(self, post_object)
 
     def test_to_follow(self):
         """авторизованные пользователи могут подписываться"""
-        self.authorized_client.get(reverse(
+        resp = self.authorized_client.get(reverse(
             'profile_follow', kwargs={'username': self.user_author.username}))
         follow = Follow.objects.filter(
-            user=self.user_author, author=self.user)
+            author=self.user_author, user=self.user)
+
         self.assertTrue(follow.exists())
+        self.assertEqual(resp.status_code, HTTPStatus.OK)
+        self.assertEqual(follow.count(), 1)
 
     def test_to_unfollow(self):
         """авторизованные пользователи могут отписываться"""
+        Follow.objects.create(
+            author=PostPagesTests.user,
+            user=PostPagesTests.user_author,
+        )
+
         self.author_client.get(reverse(
             'profile_unfollow',
             kwargs={'username': self.user.username}))
         follow = Follow.objects.filter(
             user=self.user_author, author=self.user)
+
         self.assertFalse(follow.exists())
 
     def test_follow_page_show_correct_context(self):
         """пост появился на странице подписанного пользователя"""
+        Follow.objects.create(
+            author=PostPagesTests.user,
+            user=PostPagesTests.user_author,
+        )
+
         resp = self.author_client.get(
             reverse('follow_index'))
         post_object = resp.context['page'][0]
+
         PostPagesTests.help_with_test(self, post_object)
 
     def test_non_follow_page_show_correct_context(self):
         """пост не появился на странице неподписанного пользователя"""
         resp = self.auth_client.get(
             reverse('follow_index'))
+
         self.assertEqual(len(resp.context.get('page').object_list), 0)
 
     def test_page_not_found_exists(self):
         response = self.authorized_client.get('/ы/')
-        self.assertEqual(response.status_code, 404)
+
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_home_page_cacher(self):
         """список постов на главной странице кэшируется на 20 секунд"""
         response = self.authorized_client.get(reverse('index'))
-        post_object = response.context['page'][0]
-        self.assertNotEqual(post_object.text, PostPagesTests.post.text)
-        time.sleep(21)
+
+        self.assertIsNone(response.context)
+
+        cache.clear()
         response = self.authorized_client.get(reverse('index'))
         post_object = response.context['page'][0]
+
         PostPagesTests.help_with_test(self, post_object)
+
+    def test_user_make_comment(self):
+        """ guest can't comment """
+        form_data = {
+            'text': 'первый, ах!',
+            'post': PostPagesTests.post,
+        }
+
+        self.guest_client.post(
+            reverse('add_comment', kwargs={'username': self.user.username,
+                                           'post_id': self.post.id}),
+            data=form_data,
+            follow=True
+        )
+
+        self.assertFalse(
+            Comment.objects.filter(
+                author=self.user,
+                text=form_data['text'],
+                post=self.post,
+            ).exists()
+        )

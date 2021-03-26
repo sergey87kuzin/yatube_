@@ -1,23 +1,24 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
 {% block title %}Об авторе проекта{% endblock %}
 {% block header %} {% endblock %}
 {% block content %}
 {% load user_filters %}
-<main role="main" class="container">
-  <div class="row">
+<main role='main' class='container'>
+  <div class='row'>
     <!-- Левый вспомогательный блок -->
-    <div class="col-md-3 mb-3 mt-1">
-      <div class="card">
-        <div class="card-body">
-          <ul class="list-group list-group-flush">
-            <li class="list-group-item">
-              <div class="h3">
+    <div class='col-md-3 mb-3 mt-1'>
+      <div class='card'>
+        <div class='card-body'>
+          <ul class='list-group list-group-flush'>
+            <li class='list-group-item'>
+              <div class='h3'>
                 Об авторе
               </div>
-              <p><img src="/static/images/Hamster.jpeg"></p>
+              <p><img src="{% static 'images/Hamster.jpeg'%}"/></p>
             </li>
-            <li class="list-group-item">
-              <div class="h6 text-muted">
+            <li class='list-group-item'>
+              <div class='h6 text-muted'>
                 Все, что вы бы хотели знать об авторе, но боялись спросить
               </div>
             </li>
@@ -26,9 +27,9 @@
       </div>
     </div>
     <!-- Тело страницы -->
-    <div class="col-md-9">
-      <div class="card-body">
-        <div class="card-text">
+    <div class='col-md-9'>
+      <div class='card-body'>
+        <div class='card-text'>
           <p>В самом ближайшем будущем тут появится много интересных фактов из
             жизни автора. Но на данный момент материал проходит финальную
             подготовку

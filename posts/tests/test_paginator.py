@@ -1,7 +1,5 @@
-import time
-from itertools import islice
-
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 from posts.models import Group, Post
@@ -22,36 +20,32 @@ class PaginatorViewsTest(TestCase):
         batch_size = 14
         posts = [Post(text='Test %s' % i, group=cls.group,
                       author=cls.user) for i in range(13)]
-        batch = list(islice(posts, batch_size))
-        Post.objects.bulk_create(batch, batch_size)
+        Post.objects.bulk_create(posts, batch_size)
 
     def setUp(self):
+        cache.clear()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
-    def test_first_page_containse_ten_records(self):
+    def test_first_page_contains_ten_records(self):
         rev_names = (
             reverse('index'),
             reverse('group_posts', kwargs={'slug': self.group.slug, }),
             reverse('profile', kwargs={
                     'username': self.user.username, }),
         )
-        time.sleep(21)
-        for rev_name in rev_names:
-            with self.subTest():
-                response = self.authorized_client.get(rev_name)
-                self.assertEqual(
-                    len(response.context.get('page').object_list), 10)
 
-    def test_second_page_containse_three_records(self):
-        rev_names = (
-            reverse('index'),
-            reverse('group_posts', kwargs={'slug': self.group.slug, }),
-            reverse('profile', kwargs={
-                    'username': self.user.username, }),
-        )
         for rev_name in rev_names:
-            with self.subTest():
-                response = self.authorized_client.get(rev_name + '?page=2')
-                self.assertEqual(
-                    len(response.context.get('page').object_list), 3)
+            response = self.authorized_client.get(rev_name)
+            last_page = response.context.get('paginator').num_pages
+            last_count = response.context.get('paginator').count % 10
+            indexes = {'last_page': [f'?page={ last_page }', last_count],
+                       'first_page': ['?page=1', 10], }
+            for index in indexes.values():
+                with self.subTest():
+                    response = self.authorized_client.get(
+                        rev_name + index[0])
+
+                    self.assertEqual(
+                        len(response.context.get('page').object_list),
+                        index[1])

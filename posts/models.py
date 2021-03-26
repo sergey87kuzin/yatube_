@@ -34,9 +34,7 @@ class Post(models.Model):
         ordering = ('-pub_date',)
 
     def __str__(self):
-        if len(self.text) >= 15:
-            return self.text[:15]
-        return self.text
+        return self.text[:15]
 
 
 class Comment(models.Model):
@@ -55,3 +53,11 @@ class Follow(models.Model):
                              related_name='follower')
     author = models.ForeignKey(User, on_delete=models.CASCADE,
                                related_name='following')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['author', 'user'],
+                name='uniq_follow',
+            )
+        ]

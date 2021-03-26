@@ -1,4 +1,7 @@
+from http import HTTPStatus
+
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 from posts.models import Follow, Group, Post
@@ -19,10 +22,6 @@ class PostURLTests(TestCase):
         cls.not_follow_user = User.objects.create_user(username='Anon5')
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.not_follow_user)
-        Follow.objects.create(
-            author=cls.user_author,
-            user=cls.user,
-        )
         cls.group = Group.objects.create(
             title='Название',
             slug='test-slug',
@@ -35,38 +34,47 @@ class PostURLTests(TestCase):
         )
 
     def setUp(self):
+        cache.clear()
         self.guest_client = Client()
 
     def test_url_exists_at_desired_location(self):
         """Доступ к страницам неавторизованного пользователя"""
         url_names = {
-            '/': 200,
-            f'/group/{ self.group.slug }/': 200,
-            f'/{ self.user_author.username }/': 200,
-            f'/{ self.user_author.username }/{ self.post.id }/': 200,
-            '/new/': 302,
-            f'/{ self.user_author.username }/{ self.post.id }/edit/': 302,
-            '/follow/': 302,
-            f'/{ self.user_author.username }/follow/': 302,
-            f'/{ self.user_author.username }/unfollow/': 302,
-            f'/{ self.user_author.username }/{ self.post.id }/comment/': 302
+            '/': HTTPStatus.OK,
+            f'/group/{ self.group.slug }/': HTTPStatus.OK,
+            f'/{ self.user_author.username }/': HTTPStatus.OK,
+            f'/{ self.user_author.username }/{ self.post.id }/': HTTPStatus.OK,
+            '/new/': HTTPStatus.FOUND,
+            f'/{ self.user_author.username }/{ self.post.id }/edit/':
+            HTTPStatus.FOUND,
+            '/follow/': HTTPStatus.FOUND,
+            f'/{ self.user_author.username }/follow/': HTTPStatus.FOUND,
+            f'/{ self.user_author.username }/unfollow/': HTTPStatus.FOUND,
+            f'/{ self.user_author.username }/{ self.post.id }/comment/':
+            HTTPStatus.FOUND,
+            '/ы/': HTTPStatus.NOT_FOUND,
         }
+
         for url_name, page_code in url_names.items():
             with self.subTest():
                 response = self.guest_client.get(url_name)
+
                 self.assertEqual(response.status_code, page_code)
 
     def test_new_url_exists_at_desired_location(self):
         """Страницы доступны авторизованному пользователю."""
         url_names = {
-            '/new/': 200,
-            '/follow/': 200,
-            f'/{ self.user_author.username }/follow/': 200,
-            f'/{ self.user_author.username }/{ self.post.id }/comment/': 200
+            '/new/': HTTPStatus.OK,
+            '/follow/': HTTPStatus.OK,
+            f'/{ self.user_author.username }/follow/': HTTPStatus.OK,
+            f'/{ self.user_author.username }/{ self.post.id }/comment/':
+            HTTPStatus.OK
         }
+
         for url_name, page_code in url_names.items():
             with self.subTest():
                 response = self.auth_client.get(url_name)
+
                 self.assertEqual(response.status_code, page_code)
 
     def test_edit_url_not_available(self):
@@ -74,14 +82,16 @@ class PostURLTests(TestCase):
         resp = self.authorized_client.get(
             reverse('post_edit', kwargs={'username': self.user_author.username,
                                          'post_id': self.post.id}))
-        self.assertEqual(resp.status_code, 302)
+
+        self.assertEqual(resp.status_code, HTTPStatus.FOUND)
 
     def test_edit_url_available(self):
         """Страница доступна авторизованному автору поста"""
         response = self.author_client.get(
             reverse('post_edit', kwargs={'username': self.user_author.username,
                                          'post_id': self.post.id}))
-        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -96,25 +106,34 @@ class PostURLTests(TestCase):
             f'/{ self.user_author.username }/{ self.post.id }/comment/':
             'add_comment.html'
         }
+
         for reverse_name, template in templates_url_names.items():
             with self.subTest():
                 response = self.author_client.get(reverse_name)
+
                 self.assertTemplateUsed(response, template)
 
     def test_not_followed_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
+        Follow.objects.create(
+            author=PostURLTests.user_author,
+            user=PostURLTests.user,
+        )
         templates_url_names = {
             '/follow/': 'follow.html',
             f'/{ self.user_author.username }/unfollow/':
             'profile_unfollow.html',
         }
+
         for reverse_name, template in templates_url_names.items():
             with self.subTest():
                 response = self.authorized_client.get(reverse_name)
+
                 self.assertTemplateUsed(response, template)
 
     def test_edit_redirect(self):
         resp = self.authorized_client.get(
             reverse('post_edit', kwargs={'username': self.user_author.username,
                                          'post_id': self.post.id}))
+
         self.assertRedirects(resp, reverse('index'))
