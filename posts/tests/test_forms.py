@@ -148,7 +148,7 @@ class PostFormTests(TestCase):
 
     def test_wrong_file_format(self):
         """wrong file format"""
-        my_file = open('TestFile.txt', 'w+')
+        my_file = open('temp_media/posts/TestFile.txt', 'w+')
         my_file.write('Something gone wrong')
         text_uploaded = SimpleUploadedFile(
             name='TestFile.txt',
