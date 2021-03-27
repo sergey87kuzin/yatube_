@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
@@ -128,23 +130,18 @@ def page_not_found(request, exception):
         request,
         'misc/404.html',
         {'path': request.path},
-        status=404
+        status=HTTPStatus.NOT_FOUND
     )
 
 
 def server_error(request):
-    return render(request, 'misc/500.html', status=500)
-
-
-def follow_error(request):
-    return render(request, 'follow_error.html')
+    return render(request, 'misc/500.html',
+                  status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
 @login_required
 def follow_index(request):
-    posts = []
-    authors = Follow.objects.filter(user=request.user).values_list('author')
-    posts = Post.objects.filter(author__in=authors)
+    posts = Post.objects.filter(author__following__user=request.user)
     paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
@@ -158,14 +155,11 @@ def follow_index(request):
 def profile_follow(request, username):
     following_user = get_object_or_404(User, username=username)
     follower_user = request.user
-    if following_user != follower_user:
-        follow = Follow.objects.filter(
-            user=follower_user, author=following_user).exists()
-        if follow:
-            return redirect('follow_error')
-        Follow.objects.create(user=follower_user, author=following_user)
-        return render(request, 'profile_follow.html', {'username': username})
-    return redirect('follow_error')
+    if following_user == follower_user or Follow.objects.filter(
+            user=follower_user, author=following_user).exists():
+        return redirect('profile', username=username)
+    Follow.objects.create(user=follower_user, author=following_user)
+    return render(request, 'profile_follow.html', {'username': username})
 
 
 @login_required

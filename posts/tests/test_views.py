@@ -1,18 +1,15 @@
-import os
 import shutil
 from http import HTTPStatus
 
 from django import forms
-from django.conf import settings
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from posts.models import Comment, Follow, Group, Post, User
-from yatube.settings import BASE_DIR
 
 
-@override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'temp_media'))
+@override_settings(MEDIA_ROOT='temp_media')
 class PostPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -53,10 +50,9 @@ class PostPagesTests(TestCase):
         )
 
     @classmethod
-    @override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'temp_media'))
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+        shutil.rmtree('temp_media', ignore_errors=True)
 
     def help_with_test(self, post_object):
         self.assertEqual(post_object.author, PostPagesTests.user)
@@ -155,12 +151,12 @@ class PostPagesTests(TestCase):
         """авторизованные пользователи могут подписываться"""
         resp = self.authorized_client.get(reverse(
             'profile_follow', kwargs={'username': self.user_author.username}))
-        follow = Follow.objects.filter(
-            author=self.user_author, user=self.user)
+        follow = Follow.objects.all()[0]
 
-        self.assertTrue(follow.exists())
+        self.assertEqual(follow.author, self.user_author)
+        self.assertEqual(follow.user, self.user)
         self.assertEqual(resp.status_code, HTTPStatus.OK)
-        self.assertEqual(follow.count(), 1)
+        self.assertEqual(len(Follow.objects.all()), 1)
 
     def test_to_unfollow(self):
         """авторизованные пользователи могут отписываться"""
@@ -172,10 +168,8 @@ class PostPagesTests(TestCase):
         self.author_client.get(reverse(
             'profile_unfollow',
             kwargs={'username': self.user.username}))
-        follow = Follow.objects.filter(
-            user=self.user_author, author=self.user)
 
-        self.assertFalse(follow.exists())
+        self.assertEqual(len(Follow.objects.all()), 0)
 
     def test_follow_page_show_correct_context(self):
         """пост появился на странице подписанного пользователя"""
@@ -204,9 +198,25 @@ class PostPagesTests(TestCase):
 
     def test_home_page_cacher(self):
         """список постов на главной странице кэшируется на 20 секунд"""
-        response = self.authorized_client.get(reverse('index'))
+        response_before_create = self.authorized_client.get(reverse('index'))
 
-        self.assertIsNone(response.context)
+        cache_test_post = Post.objects.create(
+            text='Cache_test',
+            group=self.group,
+            author=self.user,
+            image=self.uploaded
+        )
+
+        response_after_create = self.authorized_client.get(reverse('index'))
+
+        self.assertEqual(response_before_create.content,
+                         response_after_create.content)
+
+        cache_test_post.delete()
+        response_after_delete = self.authorized_client.get(reverse('index'))
+
+        self.assertEqual(response_after_delete.content,
+                         response_after_create.content)
 
         cache.clear()
         response = self.authorized_client.get(reverse('index'))

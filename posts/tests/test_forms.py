@@ -1,17 +1,14 @@
-import os
 import shutil
 from http import HTTPStatus
 
-from django.conf import settings
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from posts.models import Comment, Group, Post, User
-from yatube.settings import BASE_DIR
 
 
-@override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'temp_media'))
+@override_settings(MEDIA_ROOT='temp_media')
 class PostFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -47,10 +44,9 @@ class PostFormTests(TestCase):
         self.authorized_client.force_login(self.user)
 
     @classmethod
-    @override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'temp_media'))
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+        shutil.rmtree('temp_media', ignore_errors=True)
 
     def test_create_post(self):
         """Валидная форма создает запись в posts."""
@@ -143,34 +139,5 @@ class PostFormTests(TestCase):
                 author=self.user,
                 text=form_data['text'],
                 post=self.post,
-            ).exists()
-        )
-
-    def test_wrong_file_format(self):
-        """wrong file format"""
-        my_file = open('temp_media/posts/TestFile.txt', 'w+')
-        my_file.write('Something gone wrong')
-        text_uploaded = SimpleUploadedFile(
-            name='TestFile.txt',
-            content=my_file.read(),
-        )
-        form_data = {
-            'group': self.group.id,
-            'text': 'Тестовый текст, который длиннее 15 символов',
-            'image': text_uploaded,
-        }
-
-        self.authorized_client.post(
-            reverse('new_post'),
-            data=form_data,
-            follow=True
-        )
-
-        self.assertFalse(
-            Post.objects.filter(
-                author=self.user,
-                text=self.post.text,
-                group=self.group.id,
-                image='posts/my_file.txt',
             ).exists()
         )

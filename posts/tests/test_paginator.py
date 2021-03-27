@@ -17,9 +17,9 @@ class PaginatorViewsTest(TestCase):
             slug='test-slug',
             description='Описание',
         )
-        batch_size = 14
+        batch_size = 13
         posts = [Post(text='Test %s' % i, group=cls.group,
-                      author=cls.user) for i in range(13)]
+                      author=cls.user) for i in range(batch_size)]
         Post.objects.bulk_create(posts, batch_size)
 
     def setUp(self):
@@ -39,13 +39,13 @@ class PaginatorViewsTest(TestCase):
             response = self.authorized_client.get(rev_name)
             last_page = response.context.get('paginator').num_pages
             last_count = response.context.get('paginator').count % 10
-            indexes = {'last_page': [f'?page={ last_page }', last_count],
-                       'first_page': ['?page=1', 10], }
-            for index in indexes.values():
+            indexes = {f'?page={ last_page }': last_count,
+                       '?page=1': 10, }
+            for index, count in indexes.items():
                 with self.subTest():
                     response = self.authorized_client.get(
-                        rev_name + index[0])
+                        rev_name + index)
 
                     self.assertEqual(
                         len(response.context.get('page').object_list),
-                        index[1])
+                        count)

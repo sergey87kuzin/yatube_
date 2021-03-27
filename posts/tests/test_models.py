@@ -53,7 +53,7 @@ class PostModelTest(TestCase):
                 self.assertEqual(
                     group._meta.get_field(value).verbose_name, expected)
 
-    def test_group_verbose_name(self):
+    def test_comment_verbose_name(self):
         """verbose_name в полях совпадает с ожидаемым."""
         comment = PostModelTest.comment
         text_verbose_name = 'Текст сообщения'
