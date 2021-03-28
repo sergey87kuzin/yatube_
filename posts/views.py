@@ -1,26 +1,23 @@
 from http import HTTPStatus
 
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.cache import cache_page
 
 from .forms import CommentForm, PostForm
 from .models import Follow, Group, Post, User
 
 
-@cache_page(20, key_prefix='index_page')
 def index(request):
-    post_list = Post.objects.select_related('group').all()
-    paginator = Paginator(post_list, 10)
+    results = cache.get('index_page')
+    if results is None:
+        post_list = Post.objects.all()
+        cache.set('index_page', post_list, 20)
+    cached_list = cache.get('index_page')
+    paginator = Paginator(cached_list, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    if len(post_list) > 10:
-        return render(request,
-                      'index.html',
-                      {'page': page,
-                       'changes': 'index',
-                       'paginator': paginator})
     return render(request, 'index.html', {'page': page,
                                           'changes': 'index', })
 
@@ -66,8 +63,8 @@ def profile(request, username):
     page = paginator.get_page(page_number)
     return render(request, 'profile.html',
                   {'author': user, 'page': page, 'changes': 'profile',
-                   'paginator': paginator,
-                   'following': following, 'followers_count': followers_count,
+                   'following': following,
+                   'followers_count': followers_count,
                    'following_count': following_count})
 
 
