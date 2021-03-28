@@ -70,9 +70,6 @@ class PostPagesTests(TestCase):
                 reverse('group_posts', kwargs={'slug': self.group.slug})
             ),
             'follow.html': reverse('follow_index'),
-            'profile_follow.html': reverse(
-                'profile_follow',
-                kwargs={'username': self.user_author.username}),
         }
 
         for template, reverse_name in templates_url_names.items():
@@ -80,18 +77,6 @@ class PostPagesTests(TestCase):
                 response = self.authorized_client.get(reverse_name)
 
                 self.assertTemplateUsed(response, template)
-
-    def test_follow_uses_correct_template(self):
-        Follow.objects.create(
-            author=PostPagesTests.user,
-            user=PostPagesTests.user_author,
-        )
-
-        response = self.author_client.get(
-            reverse('profile_unfollow',
-                    kwargs={'username': self.user.username}))
-
-        self.assertTemplateUsed(response, 'profile_unfollow.html')
 
     def test_new_edit_page_show_correct_context(self):
         """Шаблон new, edit сформирован с правильным контекстом."""
@@ -149,14 +134,14 @@ class PostPagesTests(TestCase):
 
     def test_to_follow(self):
         """авторизованные пользователи могут подписываться"""
-        resp = self.authorized_client.get(reverse(
+        self.authorized_client.get(reverse(
             'profile_follow', kwargs={'username': self.user_author.username}))
-        follow = Follow.objects.all()[0]
+        if Follow.objects.count() > 0:
+            follow = Follow.objects.all().first()
 
         self.assertEqual(follow.author, self.user_author)
         self.assertEqual(follow.user, self.user)
-        self.assertEqual(resp.status_code, HTTPStatus.OK)
-        self.assertEqual(len(Follow.objects.all()), 1)
+        self.assertEqual(Follow.objects.count(), 1)
 
     def test_to_unfollow(self):
         """авторизованные пользователи могут отписываться"""
@@ -169,7 +154,7 @@ class PostPagesTests(TestCase):
             'profile_unfollow',
             kwargs={'username': self.user.username}))
 
-        self.assertEqual(len(Follow.objects.all()), 0)
+        self.assertEqual(Follow.objects.count(), 0)
 
     def test_follow_page_show_correct_context(self):
         """пост появился на странице подписанного пользователя"""

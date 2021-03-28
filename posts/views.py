@@ -17,8 +17,10 @@ def index(request):
     cached_list = cache.get('index_page')
     paginator = Paginator(cached_list, 10)
     page_number = request.GET.get('page')
+    page_count = paginator.per_page
     page = paginator.get_page(page_number)
     return render(request, 'index.html', {'page': page,
+                                          'count': page_count,
                                           'changes': 'index', })
 
 
@@ -27,14 +29,11 @@ def group_posts(request, slug):
     posts_list = group.posts.all()
     paginator = Paginator(posts_list, 10)
     page_number = request.GET.get('page')
+    page_count = paginator.per_page
     page = paginator.get_page(page_number)
-    if len(posts_list) > 10:
-        return render(request, 'group.html', {'group': group,
-                                              'page': page,
-                                              'changes': 'index',
-                                              'paginator': paginator})
     return render(request, 'group.html', {'group': group,
                                           'page': page,
+                                          'count': page_count,
                                           'changes': 'index', })
 
 
@@ -60,9 +59,11 @@ def profile(request, username):
     following_count = Follow.objects.filter(user=user).count()
     paginator = Paginator(posts_list, 10)
     page_number = request.GET.get('page')
+    page_count = paginator.per_page
     page = paginator.get_page(page_number)
     return render(request, 'profile.html',
                   {'author': user, 'page': page, 'changes': 'profile',
+                   'count': page_count,
                    'following': following,
                    'followers_count': followers_count,
                    'following_count': following_count})
@@ -163,7 +164,7 @@ def profile_follow(request, username):
             user=follower_user, author=following_user).exists():
         return redirect('profile', username=username)
     Follow.objects.create(user=follower_user, author=following_user)
-    return render(request, 'profile_follow.html', {'username': username})
+    return redirect('profile', username=username)
 
 
 @login_required
@@ -173,4 +174,4 @@ def profile_unfollow(request, username):
     follow = get_object_or_404(Follow, author=following_user,
                                user=follower_user)
     follow.delete()
-    return render(request, 'profile_unfollow.html', {'username': username})
+    return redirect('profile', username=username)

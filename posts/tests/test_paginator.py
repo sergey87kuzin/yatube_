@@ -37,10 +37,10 @@ class PaginatorViewsTest(TestCase):
 
         for rev_name in rev_names:
             response = self.authorized_client.get(rev_name)
-            # last_page = response.context.get('paginator').num_pages
-            # last_count = response.context.get('paginator').count % 10
-            indexes = {'?page=2': 3,
-                       '?page=1': 10, }
+            first_count = response.context.get('count')
+            second_count = Post.objects.count() - first_count
+            indexes = {'?page=2': second_count,
+                       '?page=1': first_count, }
             for index, count in indexes.items():
                 with self.subTest():
                     response = self.authorized_client.get(

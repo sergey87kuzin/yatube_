@@ -66,7 +66,7 @@ class PostURLTests(TestCase):
         url_names = {
             '/new/': HTTPStatus.OK,
             '/follow/': HTTPStatus.OK,
-            f'/{ self.user_author.username }/follow/': HTTPStatus.OK,
+            f'/{ self.user_author.username }/follow/': HTTPStatus.FOUND,
             f'/{ self.user_author.username }/{ self.post.id }/comment/':
             HTTPStatus.OK
         }
@@ -101,8 +101,6 @@ class PostURLTests(TestCase):
             '/new/': 'new.html',
             f'/{ self.user_author.username }/{ self.post.id }/edit/':
             'new.html',
-            f'/{ self.not_follow_user.username }/follow/':
-            'profile_follow.html',
             f'/{ self.user_author.username }/{ self.post.id }/comment/':
             'add_comment.html'
         }
@@ -121,8 +119,6 @@ class PostURLTests(TestCase):
         )
         templates_url_names = {
             '/follow/': 'follow.html',
-            f'/{ self.user_author.username }/unfollow/':
-            'profile_unfollow.html',
         }
 
         for reverse_name, template in templates_url_names.items():
