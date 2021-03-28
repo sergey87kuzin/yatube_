@@ -15,11 +15,14 @@ def index(request):
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    return render(request,
-                  'index.html',
-                  {'page': page,
-                   'changes': 'index',
-                   'paginator': paginator})
+    if len(post_list) > 10:
+        return render(request,
+                      'index.html',
+                      {'page': page,
+                       'changes': 'index',
+                       'paginator': paginator})
+    return render(request, 'index.html', {'page': page,
+                                          'changes': 'index', })
 
 
 def group_posts(request, slug):
@@ -28,10 +31,14 @@ def group_posts(request, slug):
     paginator = Paginator(posts_list, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
+    if len(posts_list) > 10:
+        return render(request, 'group.html', {'group': group,
+                                              'page': page,
+                                              'changes': 'index',
+                                              'paginator': paginator})
     return render(request, 'group.html', {'group': group,
                                           'page': page,
-                                          'changes': 'index',
-                                          'paginator': paginator})
+                                          'changes': 'index', })
 
 
 @login_required
