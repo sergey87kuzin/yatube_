@@ -1,12 +1,16 @@
 {% extends 'base.html' %}
+{% load cache %}
 {% load thumbnail %}
 {% block title %}Последние обновления на сайте{% endblock %}
 {% block header %}Последние обновления на сайте{% endblock %}
 {% block content %}
 {% include 'includes/changer.html' %}
+{% cache 20 index_page %}
 {% for post in page %}
 {% include 'includes/post_card.html' %}
 {% if not forloop.last %}<hr>{% endif %}
 {% endfor %}
+{% endcache %}
 {% include 'includes/paginator.html' %}
 {% endblock %}
+

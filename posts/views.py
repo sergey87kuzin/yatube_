@@ -1,7 +1,6 @@
 from http import HTTPStatus
 
 from django.contrib.auth.decorators import login_required
-from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -10,12 +9,8 @@ from .models import Follow, Group, Post, User
 
 
 def index(request):
-    results = cache.get('index_page')
-    if results is None:
-        post_list = Post.objects.all()
-        cache.set('index_page', post_list, 20)
-    cached_list = cache.get('index_page')
-    paginator = Paginator(cached_list, 10)
+    post_list = Post.objects.all()
+    paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
     page_count = paginator.per_page
     page = paginator.get_page(page_number)

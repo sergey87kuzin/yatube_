@@ -136,12 +136,11 @@ class PostPagesTests(TestCase):
         """авторизованные пользователи могут подписываться"""
         self.authorized_client.get(reverse(
             'profile_follow', kwargs={'username': self.user_author.username}))
-        if Follow.objects.count() > 0:
-            follow = Follow.objects.all().first()
+        self.assertEqual(Follow.objects.count(), 1)
+        follow = Follow.objects.all().first()
 
         self.assertEqual(follow.author, self.user_author)
         self.assertEqual(follow.user, self.user)
-        self.assertEqual(Follow.objects.count(), 1)
 
     def test_to_unfollow(self):
         """авторизованные пользователи могут отписываться"""
