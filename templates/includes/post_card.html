@@ -1,28 +1,33 @@
-<div class='card mb-3 mt-1 shadow-sm'>
+<div class='card mb-2 mt-1 shadow-sm'>
   {% load thumbnail %}
-  {% thumbnail post.image '960x339' crop='center' upscale=True as im %}
+  {% thumbnail post.image '960x960' crop='center' upscale=True as im %}
   <img class='card-img' src='{{ im.url }}'>
   {% endthumbnail %}
   <div class='card-body'>
     <p class='card-text'>
       {% if changes == 'index' %}
-      <a href="{% url 'profile' post.author.username %}"><strong class='d-block text-gray-dark'>{{ post.author.get_full_name }}</strong></a>
+      <a href="{% url 'profile' post.author.username %}"><strong class='d-block text-gray-dark'>{{ post.author.username }}</strong></a>
       {% else %}
-      <a href="{% url 'profile' author.username %}"><strong class='d-block text-gray-dark'>{{ author.get_full_name }}</strong></a>
+      <a href="{% url 'profile' author.username %}"><strong class='d-block text-gray-dark'>{{ author.username }}</strong></a>
       {% endif %}
       <p>{{ post.text|linebreaksbr }}</p>
     </p>
     <div class='d-flex justify-content-between align-items-center'>
       <div class='btn-group '>
         {% if changes == 'index' %}
-        <a href="{% url 'post' post.author.username post.id %}"><strong class='d-block text-gray-dark'>перейти к посту</strong></a>
+        <a class='btn btn-sm text-muted' href="{% url 'post' post.author.username post.id %}" role='button'><strong class='d-block text-gray-dark'>перейти к посту</strong></a>
         {% elif changes == 'profile' %}
-        <a href="{% url 'post' author.username post.id %}"><strong class='d-block text-gray-dark'>Перейти к посту</strong></a>
+        <a class='btn btn-sm text-muted' href="{% url 'post' author.username post.id %}" role='button'><strong class='d-block text-gray-dark'>Перейти к посту</strong></a>
         {% elif changes == 'view' %}
         <div class='btn-group'>
+          {% if edit == True %}
           <a class='btn btn-sm text-muted' href="{% url 'post_edit' author.username post.id %}" role='button'><strong class='d-block text-gray-dark'>Редактировать пост </strong></a>
+          {% endif %}
           <a class='btn btn-sm text-muted' href="{% url 'add_comment' author.username post.id %}" role='button'><strong class='d-block text-gray-dark'> Комментировать пост</strong></a>
         </div>
+        {% endif %}
+        {% if post.group %}
+        <a class='btn btn-sm text-muted' href="{% url 'group_posts' post.group.slug %}" role='button'><strong class='d-block text-gray-dark'>Group</strong></a>
         {% endif %}
       </div>
       <small class='text-muted'>{{ post.pub_date|date:'d M Y' }}</small>

@@ -1,6 +1,12 @@
-<div class='card'>
+<div class='card shadow-sm text-center'>
   <div class='card-body'>
-    <div class='h2'>{{ author.get_full_name }}</div>
+    {% load thumbnail %}
+    {% for ava in avatar %}
+    {% thumbnail ava.image '160x113' crop='center' upscale=True as im %}
+    <img class='card-img' src='{{ im.url }}'>
+    {% endthumbnail %}
+    {% endfor %}
+    <div class='h2'>{{ author.get_full_name }} </div>
     <a href="{% url 'profile' author.username %}"><strong class='d-block text-gray-dark'>{{ author.get_username }}</strong></a>
     <ul class='list-group list-group-flush'>
       <li class='list-group-item'>
@@ -14,6 +20,9 @@
           количество постов: {{ author.posts.count }}
         </div>
       </li>
+      {% if author == request.user and changes == 'profile' %}
+      {% include 'includes/avatar.html' %}
+      {% endif %}
       {% if author != request.user %}
       <li class="list-group-item">
         {% if following %}

@@ -29,7 +29,7 @@ class PostFormTests(TestCase):
         )
         cls.group = Group.objects.create(
             title='Название',
-            slug='Ссылка',
+            slug='test_slug',
             description='Описание',
         )
         cls.post = Post.objects.create(
@@ -74,6 +74,19 @@ class PostFormTests(TestCase):
                 image='posts/small.gif',
             ).exists()
         )
+        post_with_image = {
+            'index': reverse('index'),
+            'profile': reverse(
+                'profile', kwargs={'username': self.user.username, }),
+            'group': reverse(
+                'group_posts', kwargs={'slug': self.group.slug, }),
+            'post': reverse('post', kwargs={'username': self.user.username,
+                                            'post_id': self.post.id + 1, }),
+        }
+        for key, item in post_with_image.items():
+            with self.subTest():
+                response = self.authorized_client.get(item)
+        self.assertContains(response, '<img')
 
     def test_edit_post(self):
         """Валидная форма редактирует запись в posts."""

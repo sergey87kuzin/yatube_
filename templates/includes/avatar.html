@@ -1,0 +1,18 @@
+{% load user_filters %}
+
+{% if user.is_authenticated %}
+<div class='card my-4'>
+  <form method='post' enctype='multipart/form-data'>
+    {% csrf_token %}
+    <h5 class='card-header'>Change avatar:</h5>
+    <div class='card-body'>
+      <div class='form-group'>
+        {{ form.image }}
+      </div>
+    </div>
+    <div class='card-body'>
+      <button type='submit' class='btn btn-primary'>Отправить</button>
+    </div>
+  </form>
+</div>
+{% endif %}

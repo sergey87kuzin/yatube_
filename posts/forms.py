@@ -1,6 +1,6 @@
 from django.forms import ModelForm
 
-from .models import Comment, Post
+from .models import Avatar, Comment, Post
 
 
 class PostForm(ModelForm):
@@ -13,3 +13,9 @@ class CommentForm(ModelForm):
     class Meta:
         model = Comment
         fields = ['text']
+
+
+class AvatarForm(ModelForm):
+    class Meta:
+        model = Avatar
+        fields = ['image']

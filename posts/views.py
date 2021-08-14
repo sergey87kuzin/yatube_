@@ -4,8 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import CommentForm, PostForm
-from .models import Follow, Group, Post, User
+from .forms import AvatarForm, CommentForm, PostForm
+from .models import Avatar, Follow, Group, Post, User
 
 
 def index(request):
@@ -56,12 +56,32 @@ def profile(request, username):
     page_number = request.GET.get('page')
     page_count = paginator.per_page
     page = paginator.get_page(page_number)
-    return render(request, 'profile.html',
-                  {'author': user, 'page': page, 'changes': 'profile',
-                   'count': page_count,
-                   'following': following,
-                   'followers_count': followers_count,
-                   'following_count': following_count})
+    avatar = Avatar.objects.filter(profile=user)
+    context = {'author': user, 'page': page, 'changes': 'profile',
+               'avatar': avatar, 'count': page_count,
+               'following': following,
+               'followers_count': followers_count,
+               'following_count': following_count}
+    if user == request.user:
+        if avatar.count() == 1:
+            form = AvatarForm(request.POST or None,
+                              files=request.FILES or None, instance=avatar[0])
+            if form.is_valid():
+                form.instance.profile = user
+                form.save()
+                return redirect('profile', username=user.username)
+            added = {'form': form, }
+            context.update(added)
+            return render(request, 'profile.html', context)
+        form = AvatarForm(request.POST or None, files=request.FILES or None)
+        if form.is_valid():
+            form.instance.profile = user
+            form.save()
+            return redirect('profile', username=user.username)
+        added = {'form': form, }
+        context.update(added)
+        return render(request, 'profile.html', context)
+    return render(request, 'profile.html', context)
 
 
 def get_context(username, post_id):
@@ -79,18 +99,23 @@ def get_context(username, post_id):
 
 def post_view(request, username, post_id):
     context = get_context(username, post_id)
+    edit = False
+    user = get_object_or_404(User, username=username)
     post = get_object_or_404(Post, author__username=username, id=post_id)
     followers_count = Follow.objects.filter(author=post.author).count()
     following_count = Follow.objects.filter(user=post.author).count()
+    avatar = Avatar.objects.filter(profile=user)
     form = CommentForm(request.POST or None)
+    if user == request.user:
+        edit = True
     if form.is_valid():
         form.instance.author = request.user
         form.instance.post = post
         form.save()
         return redirect('post', username=post.author.username,
                         post_id=post.id)
-    added = {'form': form, 'followers_count': followers_count,
-             'following_count': following_count}
+    added = {'form': form, 'followers_count': followers_count, 'edit': edit,
+             'following_count': following_count, 'avatar': avatar, }
     context.update(added)
     return render(request, 'post.html', context)
 

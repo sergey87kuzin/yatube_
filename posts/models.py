@@ -61,3 +61,19 @@ class Follow(models.Model):
                 name='uniq_follow',
             )
         ]
+
+
+class Avatar(models.Model):
+    image = models.ImageField(upload_to='profiles/',
+                              blank=True, null=True, verbose_name='')
+    profile = models.ForeignKey(User, on_delete=models.CASCADE,
+                                verbose_name='Автор',
+                                related_name='avatars')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['image', 'profile'],
+                name='uniq_avatar',
+            )
+        ]
